@@ -7,6 +7,7 @@ public class ValidationRequest {
     private String firstName;
     private String challenge;
     private String dateOfBirth;
+    private boolean reportAusweis;
 
     /* Special func */
 
@@ -60,5 +61,13 @@ public class ValidationRequest {
 
     public void setDateOfBirth(String dateOfBirth) {
         this.dateOfBirth = dateOfBirth;
+    }
+
+    public boolean isReportAusweis() {
+        return reportAusweis;
+    }
+
+    public void setReportAusweis(boolean reportAusweis) {
+        this.reportAusweis = reportAusweis;
     }
 }

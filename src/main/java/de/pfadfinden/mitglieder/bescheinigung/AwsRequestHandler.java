@@ -9,9 +9,11 @@ import de.pfadfinden.mitglieder.bescheinigung.captcha.CaptchaService;
 import de.pfadfinden.mitglieder.bescheinigung.exception.MembershipValidationException;
 import de.pfadfinden.mitglieder.bescheinigung.model.ValidationRequest;
 import de.pfadfinden.mitglieder.bescheinigung.service.MembershipValidationService;
+import de.pfadfinden.mitglieder.bescheinigung.utils.ProxyResponseEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,13 +26,12 @@ public class AwsRequestHandler implements RequestHandler<APIGatewayProxyRequestE
     private MembershipValidationService membershipValidationService = new MembershipValidationService();
     private CaptchaService captchaService = new CaptchaService();
 
-    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent apiGatewayRequest, Context context) {
-        String fullRequestId = "";
+    public ProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent apiGatewayRequest, Context context) {
         String shortRequestId = "";
 
         if(apiGatewayRequest.getRequestContext() != null) {
 
-            fullRequestId = apiGatewayRequest.getRequestContext().getRequestId();
+            String fullRequestId = apiGatewayRequest.getRequestContext().getRequestId();
             shortRequestId = fullRequestId.substring(0,fullRequestId.indexOf("-"));
 
             logger.info("RequestContext requestId: {} ShortID: {}", apiGatewayRequest.getRequestContext()
@@ -44,16 +45,22 @@ public class AwsRequestHandler implements RequestHandler<APIGatewayProxyRequestE
         headers.put("Access-Control-Allow-Methods","POST,OPTIONS");
         headers.put("Access-Control-Allow-Origin","*");
 
-        APIGatewayProxyResponseEvent responseEvent = new APIGatewayProxyResponseEvent();
+        ProxyResponseEvent responseEvent = new ProxyResponseEvent();
         try {
             byte[] encodedBytes = this.processRequest(apiGatewayRequest,shortRequestId);
             headers.put("Content-Type", "application/pdf");
             responseEvent.setStatusCode(200);
             responseEvent.setHeaders(headers);
+            responseEvent.setIsBase64Encoded(true);
             responseEvent.setBody(new String(encodedBytes));
         } catch (MembershipValidationException e) {
             logger.info("Validation failed",e);
             responseEvent.setStatusCode(400);
+            responseEvent.setHeaders(headers);
+            responseEvent.setBody(null);
+        } catch (IOException e) {
+            logger.info("Validation failed because of technical error.",e);
+            responseEvent.setStatusCode(500);
             responseEvent.setHeaders(headers);
             responseEvent.setBody(null);
         }
@@ -61,7 +68,7 @@ public class AwsRequestHandler implements RequestHandler<APIGatewayProxyRequestE
     }
 
     private byte[] processRequest(APIGatewayProxyRequestEvent apiGatewayRequest, String requestId) throws
-            MembershipValidationException {
+            MembershipValidationException, IOException {
         ValidationRequest validationRequest = this.gson.fromJson(apiGatewayRequest.getBody(), ValidationRequest.class);
 
         if(apiGatewayRequest.getRequestContext() != null) {

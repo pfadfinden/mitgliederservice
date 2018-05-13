@@ -22,25 +22,22 @@ public class CaptchaService {
     private final Logger logger = LoggerFactory.getLogger(CaptchaService.class);
     private Gson gson = new Gson();
 
-    public void verify(String responseCode, String remoteIp) throws MembershipValidationException {
+    public void verify(String responseCode, String remoteIp) throws MembershipValidationException, IOException {
 
         if (!Boolean.parseBoolean(PropertyFactory.getPropertiesMap().getProperty("captcha.enabled"))) {
             logger.warn("reCaptcha verification is not enabled in application config.");
             return;
         }
 
-        if (responseCode == null || "".equals(responseCode)) throw new MembershipValidationInputException("captcha " +
-                "empty or null");
+        if (responseCode == null || "".equals(responseCode))
+            throw new MembershipValidationInputException("captcha empty or null");
+
         try {
             CaptchaVerifyResponse captchaVerifyResponse = verifyResponse(responseCode, remoteIp);
             if (captchaVerifyResponse == null || !captchaVerifyResponse.isSuccess())
                 throw new MembershipValidationInputException("Captcha challenge fehlerhaft.");
-        } catch (IOException e) {
-            logger.error("technical error validating captcha", e);
-            throw new MembershipValidationException();
         } catch (URISyntaxException e) {
-            logger.error("technical error validating captcha", e);
-            throw new MembershipValidationException();
+            throw new IOException(e);
         }
     }
 

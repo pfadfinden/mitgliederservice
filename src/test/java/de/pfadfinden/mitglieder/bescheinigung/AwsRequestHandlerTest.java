@@ -13,15 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class AwsRequestHandlerTest {
 
-    AwsRequestHandler awsRequestHandler;
+    private AwsRequestHandler awsRequestHandler;
 
     @BeforeEach
-    public void tearUp() {
+    void tearUp() {
         this.awsRequestHandler = new AwsRequestHandler();
     }
 
     @Test
-    public void handleRequestValid() throws Exception {
+    void handleRequestValid() {
 
         Gson gson = new Gson();
 
@@ -31,6 +31,7 @@ class AwsRequestHandlerTest {
         validationRequest.setDateOfBirth("1987-08-13");
         validationRequest.setMembershipNumber(11111);
         validationRequest.setChallenge("XXXXXXXXXXXXXXX");
+        validationRequest.setReportAusweis(true);
 
         APIGatewayProxyRequestEvent apiGatewayRequest = new APIGatewayProxyRequestEvent();
         apiGatewayRequest.setBody(gson.toJson(validationRequest));
@@ -45,12 +46,12 @@ class AwsRequestHandlerTest {
     }
 
     @Test
-    public void handleRequestInvalid() throws Exception {
+    void handleRequestInvalid() {
 
         Gson gson = new Gson();
 
         ValidationRequest validationRequest = new ValidationRequest();
-        validationRequest.setFirstName("Max");
+        validationRequest.setFirstName("Max");                            // <-- invalid input
         validationRequest.setLastName("Uteiumetzgeö");
         validationRequest.setDateOfBirth("1987-08-13");
         validationRequest.setMembershipNumber(11111);

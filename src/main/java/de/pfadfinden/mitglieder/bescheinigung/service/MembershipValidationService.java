@@ -14,6 +14,7 @@ import de.pfadfinden.ica.service.ReportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,7 +23,7 @@ public class MembershipValidationService {
 
     private final Logger logger = LoggerFactory.getLogger(MembershipValidationService.class);
 
-    public void validate(ValidationRequest validationRequest) throws MembershipValidationException {
+    public void validate(ValidationRequest validationRequest) throws MembershipValidationException, IOException {
         if (validationRequest == null) throw new MembershipValidationException("Mitglied nicht gefunden");
 
         logger.info("validationRequest: {}", validationRequest);
@@ -47,6 +48,8 @@ public class MembershipValidationService {
         }
 
         logger.info("MitgliederResult {}",mitgliederResult);
+
+        if(mitgliederResult == null) throw new IOException("MV returned null");
 
         if (mitgliederResult.size() > 0) {
             IcaMitgliedListElement icaMitglied = mitgliederResult.iterator().next();
@@ -89,6 +92,12 @@ public class MembershipValidationService {
         String icaUsername = PropertyFactory.getPropertiesMap().getProperty("ica.username");
         String icaPassword = PropertyFactory.getPropertiesMap().getProperty("ica.password");
 
+        String reportString = PropertyFactory.getPropertiesMap().getProperty("ica.report.bescheinigung.reportId");
+        if(validationRequest.isReportAusweis()){
+            reportString = PropertyFactory.getPropertiesMap().getProperty("ica.report.ausweis.reportId");
+        }
+        Integer reportId = Integer.valueOf(reportString);
+
         IcaServer ica = (icaServer.equals("BDP_QA")) ? IcaServer.BDP_QA : IcaServer.BDP_PROD;
 
         HashMap<String, Object> reportParams = new HashMap<>();
@@ -99,7 +108,7 @@ public class MembershipValidationService {
                 IcaConnector icaConnector = new IcaConnector(ica, icaUsername, icaPassword);
         ) {
             ReportService reportService = new ReportService(icaConnector);
-            return reportService.getReport(105, 1, reportParams);
+            return reportService.getReport(reportId, 1, reportParams);
 
         } catch (Exception e) {
             throw new MembershipValidationInputException("report generierung");
