@@ -9,7 +9,6 @@ import de.pfadfinden.mitglieder.bescheinigung.captcha.CaptchaService;
 import de.pfadfinden.mitglieder.bescheinigung.exception.MembershipValidationException;
 import de.pfadfinden.mitglieder.bescheinigung.model.ValidationRequest;
 import de.pfadfinden.mitglieder.bescheinigung.service.MembershipValidationService;
-import de.pfadfinden.mitglieder.bescheinigung.utils.ProxyResponseEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +25,7 @@ public class AwsRequestHandler implements RequestHandler<APIGatewayProxyRequestE
     private MembershipValidationService membershipValidationService = new MembershipValidationService();
     private CaptchaService captchaService = new CaptchaService();
 
-    public ProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent apiGatewayRequest, Context context) {
+    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent apiGatewayRequest, Context context) {
         String shortRequestId = "";
 
         if(apiGatewayRequest.getRequestContext() != null) {
@@ -45,7 +44,7 @@ public class AwsRequestHandler implements RequestHandler<APIGatewayProxyRequestE
         headers.put("Access-Control-Allow-Methods","POST,OPTIONS");
         headers.put("Access-Control-Allow-Origin","*");
 
-        ProxyResponseEvent responseEvent = new ProxyResponseEvent();
+        APIGatewayProxyResponseEvent responseEvent = new APIGatewayProxyResponseEvent();
         try {
             byte[] encodedBytes = this.processRequest(apiGatewayRequest,shortRequestId);
             headers.put("Content-Type", "application/pdf");

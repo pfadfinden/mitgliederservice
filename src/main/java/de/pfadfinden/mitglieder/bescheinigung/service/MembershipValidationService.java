@@ -1,16 +1,16 @@
 package de.pfadfinden.mitglieder.bescheinigung.service;
 
-import de.pfadfinden.mitglieder.bescheinigung.utils.PropertyFactory;
+import de.pfadfinden.ica.IcaConnection;
+import de.pfadfinden.ica.IcaServer;
+import de.pfadfinden.ica.model.IcaMitgliedListElement;
+import de.pfadfinden.ica.model.IcaSearchedValues;
+import de.pfadfinden.ica.model.IcaSearchedValuesStatus;
+import de.pfadfinden.ica.service.MitgliedService;
+import de.pfadfinden.ica.service.ReportService;
 import de.pfadfinden.mitglieder.bescheinigung.exception.MembershipValidationException;
 import de.pfadfinden.mitglieder.bescheinigung.exception.MembershipValidationInputException;
 import de.pfadfinden.mitglieder.bescheinigung.model.ValidationRequest;
-import de.pfadfinden.ica.IcaConnector;
-import de.pfadfinden.ica.IcaServer;
-import de.pfadfinden.ica.model.IcaMitgliedListElement;
-import de.pfadfinden.ica.model.IcaMitgliedStatus;
-import de.pfadfinden.ica.model.IcaSearchedValues;
-import de.pfadfinden.ica.service.MitgliedService;
-import de.pfadfinden.ica.service.ReportService;
+import de.pfadfinden.mitglieder.bescheinigung.utils.PropertyFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +38,9 @@ public class MembershipValidationService {
         IcaServer ica = (icaServer.equals("BDP_QA")) ? IcaServer.BDP_QA : IcaServer.BDP_PROD;
 
         try (
-                IcaConnector icaConnector = new IcaConnector(ica, icaUsername, icaPassword);
+                IcaConnection icaConnection = new IcaConnection(ica, icaUsername, icaPassword);
         ) {
-            MitgliedService mitgliedService = new MitgliedService(icaConnector);
+            MitgliedService mitgliedService = new MitgliedService(icaConnection);
             mitgliederResult = mitgliedService.getMitgliedBySearch(icaSearchedValues, 1, 0, 1);
         } catch (Exception e) {
             logger.error("Membership validation exception",e);
@@ -75,14 +75,15 @@ public class MembershipValidationService {
     }
 
     private IcaSearchedValues buildSearchedValues(ValidationRequest validationRequest) {
-        IcaSearchedValues icaSearchedValues = new IcaSearchedValues();
-        if (validationRequest == null) return icaSearchedValues;
-        icaSearchedValues.setNachname(validationRequest.getLastName());
-        icaSearchedValues.setVorname(validationRequest.getFirstName());
-        icaSearchedValues.setMitgliedsNummber(String.valueOf(validationRequest.getMembershipNumber()));
-        icaSearchedValues.setMglStatusId(IcaMitgliedStatus.AKTIV);
-        icaSearchedValues.setTaetigkeitId(Arrays.asList(1, 2));
-        return icaSearchedValues;
+
+        IcaSearchedValues.Builder builder = new IcaSearchedValues.Builder();
+        if (validationRequest == null) return builder.build();
+
+        return builder.withNachname(validationRequest.getLastName())
+                .withVorname(validationRequest.getFirstName())
+                .withMitgliedsNummber(String.valueOf(validationRequest.getMembershipNumber()))
+                .withMglStatusId(IcaSearchedValuesStatus.AKTIV)
+                .withTaetigkeitId(Arrays.asList(1, 2)).build();
     }
 
     public byte[] getReport(ValidationRequest validationRequest, String requestId) throws
@@ -96,7 +97,7 @@ public class MembershipValidationService {
         if(validationRequest.isReportAusweis()){
             reportString = PropertyFactory.getPropertiesMap().getProperty("ica.report.ausweis.reportId");
         }
-        Integer reportId = Integer.valueOf(reportString);
+        int reportId = Integer.valueOf(reportString);
 
         IcaServer ica = (icaServer.equals("BDP_QA")) ? IcaServer.BDP_QA : IcaServer.BDP_PROD;
 
@@ -105,9 +106,9 @@ public class MembershipValidationService {
         reportParams.put("X_RequestId", requestId);
 
         try (
-                IcaConnector icaConnector = new IcaConnector(ica, icaUsername, icaPassword);
+                IcaConnection icaConnection = new IcaConnection(ica, icaUsername, icaPassword);
         ) {
-            ReportService reportService = new ReportService(icaConnector);
+            ReportService reportService = new ReportService(icaConnection);
             return reportService.getReport(reportId, 1, reportParams);
 
         } catch (Exception e) {

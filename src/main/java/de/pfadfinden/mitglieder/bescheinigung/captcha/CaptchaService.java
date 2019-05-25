@@ -1,26 +1,24 @@
 package de.pfadfinden.mitglieder.bescheinigung.captcha;
 
 import com.google.gson.Gson;
-import de.pfadfinden.mitglieder.bescheinigung.utils.PropertyFactory;
 import de.pfadfinden.mitglieder.bescheinigung.exception.MembershipValidationException;
 import de.pfadfinden.mitglieder.bescheinigung.exception.MembershipValidationInputException;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
+import de.pfadfinden.mitglieder.bescheinigung.utils.PropertyFactory;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.util.Objects;
 
 public class CaptchaService {
 
     private final Logger logger = LoggerFactory.getLogger(CaptchaService.class);
     private Gson gson = new Gson();
+    private OkHttpClient client = new OkHttpClient();
 
     public void verify(String responseCode, String remoteIp) throws MembershipValidationException, IOException {
 
@@ -32,35 +30,36 @@ public class CaptchaService {
         if (responseCode == null || "".equals(responseCode))
             throw new MembershipValidationInputException("captcha empty or null");
 
-        try {
-            CaptchaVerifyResponse captchaVerifyResponse = verifyResponse(responseCode, remoteIp);
-            if (captchaVerifyResponse == null || !captchaVerifyResponse.isSuccess())
-                throw new MembershipValidationInputException("Captcha challenge fehlerhaft.");
-        } catch (URISyntaxException e) {
-            throw new IOException(e);
-        }
+        CaptchaVerifyResponse captchaVerifyResponse = verifyResponse(responseCode, remoteIp);
+        if (captchaVerifyResponse == null || !captchaVerifyResponse.isSuccess())
+            throw new MembershipValidationInputException("Captcha challenge fehlerhaft.");
     }
 
-    private CaptchaVerifyResponse verifyResponse(String captchaResponse, String remoteip) throws IOException,
-            URISyntaxException {
+    private CaptchaVerifyResponse verifyResponse(String captchaResponse, String remoteip) throws IOException {
 
         String captchaSecret = PropertyFactory.getPropertiesMap().getProperty("captcha.secret");
         logger.debug("reCaptcha challenge: {}", captchaResponse);
 
-        URIBuilder builder = new URIBuilder()
-                .setScheme("https").setHost("www.google.com").setPath("/recaptcha/api/siteverify")
-                .addParameter("secret", captchaSecret)
-                .addParameter("response", captchaResponse)
-                .addParameter("remoteip", remoteip);
 
-        URI requestUri = builder.build();
-        logger.debug("reCaptcha siteverfy request uri: {}", requestUri);
+        HttpUrl httpUrl = new HttpUrl.Builder()
+                .scheme("https")
+                .host("www.google.com")
+                .addPathSegments("recaptcha/api/siteverify")
+                .addQueryParameter("secret", captchaSecret)
+                .addQueryParameter("response", captchaResponse)
+                .addQueryParameter("remoteip", remoteip)
+                .build();
 
-        try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()) {
-            HttpGet httpget = new HttpGet(requestUri);
-            HttpResponse result = httpClient.execute(httpget);
-            String json = EntityUtils.toString(result.getEntity(), "UTF-8");
-            CaptchaVerifyResponse verifyResponse = gson.fromJson(json, CaptchaVerifyResponse.class);
+        logger.debug("reCaptcha siteverfy request uri: {}", httpUrl);
+
+        Request request = new Request.Builder()
+                .url(httpUrl)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            Objects.requireNonNull(response.body());
+            String responseBody = response.body().string();
+            CaptchaVerifyResponse verifyResponse = gson.fromJson(responseBody, CaptchaVerifyResponse.class);
             logger.debug("reCaptcha siteverfy response object: {}", verifyResponse);
             return verifyResponse;
         }
