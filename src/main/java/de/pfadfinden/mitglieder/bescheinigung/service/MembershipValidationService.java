@@ -37,9 +37,8 @@ public class MembershipValidationService {
 
         IcaServer ica = (icaServer.equals("BDP_QA")) ? IcaServer.BDP_QA : IcaServer.BDP_PROD;
 
-        try (
-                IcaConnection icaConnection = new IcaConnection(ica, icaUsername, icaPassword);
-        ) {
+        try {
+            IcaConnection icaConnection = new IcaConnection(ica, icaUsername, icaPassword);
             MitgliedService mitgliedService = new MitgliedService(icaConnection);
             mitgliederResult = mitgliedService.getMitgliedBySearch(icaSearchedValues, 1, 0, 1);
         } catch (Exception e) {
@@ -97,7 +96,7 @@ public class MembershipValidationService {
         if(validationRequest.isReportAusweis()){
             reportString = PropertyFactory.getPropertiesMap().getProperty("ica.report.ausweis.reportId");
         }
-        int reportId = Integer.valueOf(reportString);
+        int reportId = Integer.parseInt(reportString);
 
         IcaServer ica = (icaServer.equals("BDP_QA")) ? IcaServer.BDP_QA : IcaServer.BDP_PROD;
 
@@ -105,12 +104,10 @@ public class MembershipValidationService {
         reportParams.put("A_Mitgliedsnummer", validationRequest.getMembershipNumber());
         reportParams.put("X_RequestId", requestId);
 
-        try (
-                IcaConnection icaConnection = new IcaConnection(ica, icaUsername, icaPassword);
-        ) {
+        try {
+            IcaConnection icaConnection = new IcaConnection(ica, icaUsername, icaPassword);
             ReportService reportService = new ReportService(icaConnection);
             return reportService.getReport(reportId, 1, reportParams);
-
         } catch (Exception e) {
             throw new MembershipValidationInputException("report generierung");
         }
